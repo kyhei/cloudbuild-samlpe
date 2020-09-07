@@ -1,0 +1,36 @@
+steps:
+  - name: 'golang:1.15-alpine'
+    id: 'do testing'
+    entrypoint: '/bin/sh'
+    env:
+    - 'CGO_ENABLED=0'
+    dir: 'workspace'
+    args:
+    - '-c'
+    - |
+        go mod download \
+        && go test mymod/...
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'do building'
+    args:
+    - 'build'
+    - '-t'
+    - 'gcr.io/$PROJECT_ID/sample_app:$SHORT_SHA'
+    - '-f'
+    - './Dockerfile'
+    - './workspace'
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'do pushing image'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/sample_app:$SHORT_SHA'
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'do deploying'
+    args:
+    - 'run'
+    - 'deploy'
+    - 'sample-app'
+    - '--image=gcr.io/$PROJECT_ID/sample_app:$SHORT_SHA'
+    - '--region=asia-northeast1'
+    - '--platform=managed'
+    - '--allow-unauthenticated'
